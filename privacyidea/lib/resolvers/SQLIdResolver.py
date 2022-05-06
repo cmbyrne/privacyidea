@@ -202,6 +202,7 @@ ENCODING = "utf-8"
 SQLSOUP_LOADED = False
 try:
     from sqlsoup import SQLSoup
+
     SQLSOUP_LOADED = True
 except ImportError:  # pragma: no cover
     log.debug("SQLSoup could not be loaded!")
@@ -209,14 +210,14 @@ except ImportError:  # pragma: no cover
 if SQLSOUP_LOADED is False:  # pragma: no cover
     try:
         from sqlalchemy.ext.sqlsoup import SQLSoup
+
         log.debug("SQLSoup loaded from SQLAlchemy.")
         SQLSOUP_LOADED = True
     except ImportError:
         log.error("SQLSoup could not be loaded from SQLAlchemy!")
 
 
-class IdResolver (UserIdResolver):
-
+class IdResolver(UserIdResolver):
     searchFields = {"username": "text",
                     "userid": "numeric",
                     "phone": "text",
@@ -353,7 +354,7 @@ class IdResolver (UserIdResolver):
             log.error("Could not get the userinformation: {0!r}".format(exx))
 
         return userinfo
-    
+
     def _get_userid_filter(self, userId):
         column = getattr(self.TABLE, self.map.get("userid"))
         if isinstance(column.type, String):
@@ -397,12 +398,12 @@ class IdResolver (UserIdResolver):
             result = self.session.query(self.TABLE).filter(filter_condition)
 
             for r in result:
-                if userid != "":    # pragma: no cover
+                if userid != "":  # pragma: no cover
                     raise Exception("More than one user with loginname"
                                     " %s found!" % LoginName)
                 user = self._get_user_from_mapped_object(r)
                 userid = convert_column_to_unicode(user["id"])
-        except Exception as exx:    # pragma: no cover
+        except Exception as exx:  # pragma: no cover
             log.error("Could not get the userinformation: {0!r}".format(exx))
 
         return userid
@@ -460,8 +461,8 @@ class IdResolver (UserIdResolver):
                                                self.where)
         filter_condition = and_(*conditions)
 
-        result = self.session.query(self.TABLE).\
-            filter(filter_condition).\
+        result = self.session.query(self.TABLE). \
+            filter(filter_condition). \
             limit(self.limit)
 
         for r in result:
@@ -550,7 +551,11 @@ class IdResolver (UserIdResolver):
         self.session._model_changes = {}
         self.db = SQLSoup(self.engine, session=Session)
         self.db.session._model_changes = {}
-        self.TABLE = self.db.entity(self.table)
+        if self.table != None and '.' in self.table:
+            vars = self.table.split('.', 1)
+            self.TABLE = self.db.entity(vars[1], schema=vars[0])
+        else:
+            self.TABLE = self.db.entity(self.table)
 
         return self
 
@@ -561,17 +566,17 @@ class IdResolver (UserIdResolver):
             log.debug("using pool_size={0!s}, pool_timeout={1!s}, pool_recycle={2!s}".format(
                 self.pool_size, self.pool_timeout, self.pool_recycle))
             engine = create_engine(self.connect_string,
-                                        encoding=self.encoding,
-                                        convert_unicode=False,
-                                        pool_size=self.pool_size,
-                                        pool_recycle=self.pool_recycle,
-                                        pool_timeout=self.pool_timeout)
+                                   encoding=self.encoding,
+                                   convert_unicode=False,
+                                   pool_size=self.pool_size,
+                                   pool_recycle=self.pool_recycle,
+                                   pool_timeout=self.pool_timeout)
         except TypeError:
             # The DB Engine/Poolclass might not support the pool_size.
             log.debug("connecting without pool_size.")
             engine = create_engine(self.connect_string,
-                                        encoding=self.encoding,
-                                        convert_unicode=False)
+                                   encoding=self.encoding,
+                                   convert_unicode=False)
         return engine
 
     @classmethod
@@ -620,18 +625,18 @@ class IdResolver (UserIdResolver):
         if param.get("conParams"):
             conParams = u"?{0!s}".format(param.get("conParams"))
         connect_string = u"{0!s}://{1!s}{2!s}{3!s}{4!s}{5!s}/{6!s}{7!s}".format(param.get("Driver") or "",
-                                                   param.get("User") or "",
-                                                   password,
-                                                   "@" if (param.get("User")
-                                                           or
-                                                           password) else "",
-                                                   param.get("Server") or "",
-                                                   port,
-                                                   param.get("Database") or "",
-                                                   conParams)
+                                                                                param.get("User") or "",
+                                                                                password,
+                                                                                "@" if (param.get("User")
+                                                                                        or
+                                                                                        password) else "",
+                                                                                param.get("Server") or "",
+                                                                                port,
+                                                                                param.get("Database") or "",
+                                                                                conParams)
         # SQLAlchemy does not like a unicode connect string!
-#        if param.get("Driver").lower() == "sqlite":
-#            connect_string = str(connect_string)
+        #        if param.get("Driver").lower() == "sqlite":
+        #            connect_string = str(connect_string)
         return connect_string
 
     @classmethod
@@ -661,7 +666,14 @@ class IdResolver (UserIdResolver):
         session = Session()
         db = SQLSoup(engine, session=Session)
         try:
-            TABLE = db.entity(param.get("Table"))
+            table = param.get("Table")
+            if table != None and '.' in table:
+                vars = table.split('.', 1)
+                TABLE = db.entity(vars[1], schema=vars[0])
+            else:
+                TABLE = db.entity(table)
+
+            # TABLE = db.entity(param.get("Table"))
             conditions = cls._append_where_filter([], TABLE,
                                                   param.get("Where"))
             filter_condition = and_(*conditions)
@@ -671,6 +683,7 @@ class IdResolver (UserIdResolver):
             desc = "Found {0:d} users.".format(num)
         except Exception as exx:
             desc = "failed to retrieve users: {0!s}".format(exx)
+            print(desc)
         finally:
             # We do not want any leftover DB connection, so we first need to close
             # the session such that the DB connection gets returned to the pool (it
