@@ -667,8 +667,11 @@ class IdResolver(UserIdResolver):
         db = SQLSoup(engine, session=Session)
         try:
             table = param.get("Table")
+            log.debug(table)
             if table != None and '.' in table:
                 vars = table.split('.', 1)
+                log.debug(vars[0])
+                log.debug(vars[1])
                 TABLE = db.entity(vars[1], schema=vars[0])
             else:
                 TABLE = db.entity(table)
@@ -683,7 +686,8 @@ class IdResolver(UserIdResolver):
             desc = "Found {0:d} users.".format(num)
         except Exception as exx:
             desc = "failed to retrieve users: {0!s}".format(exx)
-            print(desc)
+            log.info(f"failed to retrieve users: {exx}")
+
         finally:
             # We do not want any leftover DB connection, so we first need to close
             # the session such that the DB connection gets returned to the pool (it
